@@ -1,0 +1,93 @@
+% Prédicat qui verifie que deux cases sont adjacentes
+adjacent(case[X1, Y1, _], case[X2, Y2, _]) :-
+    abs(X2 - X1) =< 1,
+    abs(Y2 - Y1) =< 1,
+    dif(case[X1, Y1, _], case[X2, Y2, _]). % S'assure que les cases sont différentes
+
+% Prédicat qui verifie si une case est sur le plateau de jeu
+within_board(case[X, Y, _]) :-
+    between(0, 4, X),
+    between(0, 4, Y).
+
+% Prédicat qui cherche les coups possibles pour une certaine case
+available_moves(Board, case[X, Y, _], Moves) :-
+    findall(case[X1, Y1, _], (
+        within_board(case[X1, Y1, _]),
+        adjacent(case[X, Y, _], case[X1, Y1, _]),
+        member(case[X1, Y1, "empty"], Board)
+    ), Moves).
+
+% Prédicat qui applique le mouvement et qui bloque la case depuis laquelle le joueur a bougé
+apply_move(Board, case[X, Y, Color], case[X1, Y1, NewColor], NewBoard) :-
+    available_moves(Board, case[X, Y, Color], Moves),
+    member(case[X1, Y1, "empty"], Moves),
+    select(case[X1, Y1, "empty"], Board, case[X1, Y1, NewColor], TempBoard),
+    select(case[X, Y, Color], TempBoard, case[X, Y, "blocked"], NewBoard). 
+%prédicat principal qui démarre le jeu
+play :-
+    initial_board(Board),
+    computer(Board,4,4).
+%prédicat qui gére la partie du jeu de l'utilisateur humain 
+player(Board,X,Y) :-
+    X < 5,
+    Y < 5,
+    available_moves(Board, case[X, Y, _], Moves),
+    length(Moves,Len),
+    Len == 0 -> write("black wins "/n),computer([],_,_);%verifie si le joueur a des coups disponibles
+    write("give the X coordinate"), 
+    %demande les coordonées de la case que l`utilisateur veut se déplacer vers
+    read(N1),
+    write("give the Y coordinate"),
+    read(N2),
+   	member(case[N1, N2, "empty"], Moves),
+    apply_move(Board, case[X, Y, "white"], case[N1, N2, "white"], NewBoard),
+    format("~w~n",[NewBoard]),
+    nth0(Ind, Board, case[_,_,"black"]),
+    nth0(Ind,Board,Black),
+    Black = case[Xb,Yb,_],
+    %change le tour du jeu vers le deuxiéme joueur (dans ce cas l'ordinateur)
+    computer(NewBoard, Xb,Yb).
+computer([],_,_) :-	%prédicat qui permet de finir le jeu (condition d'arrét)
+    write("Game is over").
+%prédicat qui gére la partie du jeu de l'ordinateur 
+computer(Board,X,Y) :-
+    X < 5,
+    Y < 5,
+    available_moves(Board, case[X, Y, _], Moves),
+    length(Moves,Len),
+    Len == 0 -> write("white wins /n"),computer([],_,_);%verifie si l'ordinateur a des coups disponibles
+    Moves = [Firstmove|_],
+    Firstmove = case[N1,N2,_],
+    apply_move(Board, case[X, Y, "black"], case[N1, N2, "black"], NewBoard),
+    format("~w~n",[NewBoard]),
+    nth0(Ind, Board, case[_,_,"white"]),
+    nth0(Ind,Board,White),
+    White = case[Xw,Yw,_],
+    player(NewBoard,Xw,Yw).
+
+% prédicat pour initialiser le plateau de jeu
+initial_board([
+    case[0, 0, "white"], case[0, 1, "empty"], case[0, 2, "empty"],case[0, 3, "empty"],case[0, 4, "empty"],
+    case[1, 0, "empty"], case[1, 1, "empty"], case[1, 2, "empty"],case[1, 3, "empty"],case[1, 4, "empty"],
+    case[2, 0, "empty"], case[2, 1, "empty"], case[2, 2, "empty"],case[2, 3, "empty"],case[2, 4, "empty"],
+    case[3, 0, "empty"], case[3, 1, "empty"], case[3, 2, "empty"],case[3, 3, "empty"],case[3, 4, "empty"],
+    case[4, 0, "empty"], case[4, 1, "empty"], case[4, 2, "empty"],case[4, 3, "empty"],case[4, 4, "black"]
+              ]).
+%essai non fonctionnel d'appliquer la technique du premier d'abord
+/*bestmoves([],_,_,N) :-
+    write(N).
+bestmoves(Board,X,Y,N) :-
+    available_moves(Board, case[X, Y,_], Moves),
+    N is -1,
+    bestmove(Board,Moves,N).
+bestmove(Board,Moves,N) :-
+    Moves = [Firstmove|Rest],
+    format("~w~n",[Moves]),
+    format("~w~n",[Firstmove]),
+    length(Moves,Len),
+    Len == 0 -> bestmoves([],_,_,N);
+    available_moves(Board, Firstmove, Moves2),
+    length(Moves2,Len2),
+    length(Moves,Len),
+	Len2 > N -> bestmove(Board,Rest,Len2);
+	bestmove(Board,Rest,N).
